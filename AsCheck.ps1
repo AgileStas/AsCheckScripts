@@ -4,50 +4,6 @@
             [string]$BasePath
         )
 
-#================================================================================================
-<#
-.SYNOPSIS
-    Adds note properties containing the last modified time and class name of a 
-    registry key.
-
-.DESCRIPTION
-    Add-RegKeyMember function uses the unmanged RegQueryInfoKey Win32 function
-    to get a key's last modified time and class name. It can take a RegistryKey 
-    object (which Get-Item and Get-ChildItem output) or a path to a registry key.
-
-.EXAMPLE
-    PS c:\> Get-Item HKLM:\SOFTWARE | Get-RegWritetime | Select Name, LastWriteTime
-
-    Show the name and last write time of HKLM:\SOFTWARE
-
-.EXAMPLE
-    PS C:\> Get-RegWritetime HKLM:\SOFTWARE | Select Name, LastWriteTime
-
-    Show the name and last write time of HKLM:\SOFTWARE
-
-.EXAMPLE
-    PS C:\> Get-ChildItem HKLM:\SOFTWARE | Get-RegWritetime | Select Name, LastWriteTime
-
-    Show the name and last write time of HKLM:\SOFTWARE's child keys
-
-.EXAMPLE
-    PS C:\> Get-ChildItem HKLM:\SYSTEM\CurrentControlSet\Control\Lsa | Get-RegWritetime | where classname | select name, classname
-
-    Show the name and class name of child keys under Lsa that have a class name defined.
-
-.EXAMPLE
-    PS C:\> Get-ChildItem HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall | Get-Regtime HKLM:\SOFTWARE | Select Name, LastWriteTime | where lastwritetime -gt (Get-Date).AddDays(-30) | 
-    >> select PSChildName, @{ N="DisplayName"; E={gp $_.PSPath | select -exp DisplayName }}, @{ N="Version"; E={gp $_.PSPath | select -exp DisplayVersion }}, lastwritetime |
-    >> sort lastwritetime
-
-    Show applications that have had their registry key updated in the last 30 days (sorted by the last time the key was updated).
-
-    NOTE: On a 64-bit machine, you will get different results depending on whether or not the command was executed from a 32-bit
-    or 64-bit PowerShell prompt.
-
-#>
-
-
 Function Get-RegWriteTime {
 
     [CmdletBinding()]
@@ -229,34 +185,33 @@ Function Get-RegWriteTime {
         }
     }
 }
-#================================================================================================
 
 Write-Host $env:computername
-if (-Not (Test-Path -PathType Container -Path $BasePath)) {
-	Write-Host "Specified base path does not exist or is not directory"
-	Exit 1
-}
-$NodePath = Join-Path -Path $BasePath -ChildPath $env:computername
-if (Test-Path -PathType Any -Path $NodePath) {
-	Write-Host "Specified base path already contains node directory"
-	Exit 2
-}
-New-Item -Path $BasePath -Name $env:computername -ItemType "directory"
-
-$CurFileName = Join-Path -Path $NodePath -ChildPath ComputerInfo.txt
-Get-ComputerInfo | Out-File -FilePath $CurFileName
-
-$CurFileName = Join-Path -Path $NodePath -ChildPath WindowsActivationInfo.txt
-# https://superuser.com/questions/1422368/how-can-i-check-if-windows-is-activated-from-the-command-prompt-or-powershell
-#Get-CimInstance SoftwareLicensingProduct -Filter "partialproductkey is not null" | ? name -like "windows*"
-Get-CimInstance SoftwareLicensingProduct -Filter "Name like 'Windows%' and partialproductkey <> null" | Out-File -FilePath $CurFileName
-#  | select Description, LicenseStatus
-
-$CurFileName = Join-Path -Path $NodePath -ChildPath AntivirusProductInfo.txt
-Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct | Out-File -FilePath $CurFileName
-
-$CurFileName = Join-Path -Path $NodePath -ChildPath EsetInfo.txt
-Get-ItemProperty -Path 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Info' | Out-File -FilePath $CurFileName
+##-# if (-Not (Test-Path -PathType Container -Path $BasePath)) {
+##-# 	Write-Host "Specified base path does not exist or is not directory"
+##-# 	Exit 1
+##-# }
+##-# $NodePath = Join-Path -Path $BasePath -ChildPath $env:computername
+##-# if (Test-Path -PathType Any -Path $NodePath) {
+##-# 	Write-Host "Specified base path already contains node directory"
+##-# 	Exit 2
+##-# }
+##-# New-Item -Path $BasePath -Name $env:computername -ItemType "directory"
+##-# 
+##-# $CurFileName = Join-Path -Path $NodePath -ChildPath ComputerInfo.txt
+##-# Get-ComputerInfo | Out-File -FilePath $CurFileName
+##-# 
+##-# $CurFileName = Join-Path -Path $NodePath -ChildPath WindowsActivationInfo.txt
+##-# # https://superuser.com/questions/1422368/how-can-i-check-if-windows-is-activated-from-the-command-prompt-or-powershell
+##-# #Get-CimInstance SoftwareLicensingProduct -Filter "partialproductkey is not null" | ? name -like "windows*"
+##-# Get-CimInstance SoftwareLicensingProduct -Filter "Name like 'Windows%' and partialproductkey <> null" | Out-File -FilePath $CurFileName
+##-# #  | select Description, LicenseStatus
+##-# 
+##-# $CurFileName = Join-Path -Path $NodePath -ChildPath AntivirusProductInfo.txt
+##-# Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct | Out-File -FilePath $CurFileName
+##-# 
+##-# $CurFileName = Join-Path -Path $NodePath -ChildPath EsetInfo.txt
+##-# Get-ItemProperty -Path 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Info' | Out-File -FilePath $CurFileName
 
 #Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB' -Exclude 'ROOT*'
 #Where-Object LastWriteTime -gt (Get-Date).AddDays(-1) |
@@ -274,21 +229,26 @@ Get-ItemProperty -Path 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Info' |
 
 # https://devblogs.microsoft.com/scripting/leverage-registry-key-time-stamps-via-powershell/
 #Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB\*\*' |
-#    Where-Object Service -eq USBSTOR |
+#   Where-Object Service -eq USBSTOR |
+#Where-Object LastModified -ge (Get-Date 2024-06-01) |
 #    Select-Object Service, Name, @{Name="DeviceDesc"; Expression={ $_.DeviceDesc -split ";" | select -last 1 }},
-#        @{Name="SerialNumber"; Expression={ $_.PsChildName }},
-#        @{Name="LastModified"; Expression={ (Add-RegKeyMember $_.PsPath).LastWriteTime }}
-###Where-Object LastModified -ge (Get-Date 2024-06-01) |
+#   Select-Object Service, DeviceDesc,
+#       @{Name="SerialNumber"; Expression={ $_.PsChildName }},
+#       @{Name="LastModified"; Expression={ (Add-RegKeyMember $_.PsPath).LastWriteTime }}
 
-$CurFileName = Join-Path -Path $NodePath -ChildPath UsbInfo.txt
-#$RwtScript = Join-Path -Path $PSScriptRoot -ChildPath Get-RegWriteTime.ps1
-#Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB' -Exclude 'ROOT*' | Invoke-Expression $RwtScript | Select Name, LastWriteTime
-#Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB' | Invoke-Expression -Command $RwtScript | Select Name, LastWriteTime
-#Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB' -Exclude 'ROOT*' | E:\AsCheck\Get-RegWriteTime.ps1 | Select Name, LastWriteTime
-Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB\*' -Exclude 'ROOT*' | Get-RegWriteTime |
-	Select Name, LastWriteTime,
-		@{Name="SerialNumber"; Expression={ $_.PsChildName }} |Format-List | Out-File -FilePath $CurFileName
-$CurFileName = Join-Path -Path $NodePath -ChildPath UsbStorInfo.txt
-Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USBSTOR\*\*' | Get-RegWriteTime |
-	Select Name, LastWriteTime,
-		@{Name="SerialNumber"; Expression={ $_.PsChildName }} | Format-List | Out-File -FilePath $CurFileName
+if( $Host -and $Host.UI -and $Host.UI.RawUI ) {
+$rawUI = $Host.UI.RawUI
+$oldSize = $rawUI.BufferSize
+$typeName = $oldSize.GetType( ).FullName
+$newSize = New-Object $typeName (500, $oldSize.Height)
+$rawUI.BufferSize = $newSize
+}
+#ForEach-Object { Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB" } | Get-ChildItem | 
+#$obj = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB\VID_30FA&PID_0300" | Get-RegWriteTime
+# | Select-Object Name, LastWriteTime, Property | Get-ItemProperty DeviceDesc
+#echo $obj.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:")
+#echo $obj.LastWriteTime
+#$path = $obj.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:")
+#Get-ItemProperty -LiteralPath $path
+
+Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB" | Get-ChildItem | Get-RegWriteTime | ForEach-Object -Process { Write-Output "--- Item-Break ---"; Write-Output "Item-Path : $_"; Write-Output "Item-Name : $($_.Name)"; Write-Output "Item-LastModified : $($_.LastWriteTime)"; Get-ItemProperty -LiteralPath $_.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:") }
