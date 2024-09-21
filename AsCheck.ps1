@@ -186,32 +186,40 @@ Function Get-RegWriteTime {
     }
 }
 
+if( $Host -and $Host.UI -and $Host.UI.RawUI ) {
+$rawUI = $Host.UI.RawUI
+$oldSize = $rawUI.BufferSize
+$typeName = $oldSize.GetType( ).FullName
+$newSize = New-Object $typeName (500, $oldSize.Height)
+$rawUI.BufferSize = $newSize
+}
+
 Write-Host $env:computername
-##-# if (-Not (Test-Path -PathType Container -Path $BasePath)) {
-##-# 	Write-Host "Specified base path does not exist or is not directory"
-##-# 	Exit 1
-##-# }
-##-# $NodePath = Join-Path -Path $BasePath -ChildPath $env:computername
-##-# if (Test-Path -PathType Any -Path $NodePath) {
-##-# 	Write-Host "Specified base path already contains node directory"
-##-# 	Exit 2
-##-# }
-##-# New-Item -Path $BasePath -Name $env:computername -ItemType "directory"
-##-# 
-##-# $CurFileName = Join-Path -Path $NodePath -ChildPath ComputerInfo.txt
-##-# Get-ComputerInfo | Out-File -FilePath $CurFileName
-##-# 
-##-# $CurFileName = Join-Path -Path $NodePath -ChildPath WindowsActivationInfo.txt
-##-# # https://superuser.com/questions/1422368/how-can-i-check-if-windows-is-activated-from-the-command-prompt-or-powershell
-##-# #Get-CimInstance SoftwareLicensingProduct -Filter "partialproductkey is not null" | ? name -like "windows*"
-##-# Get-CimInstance SoftwareLicensingProduct -Filter "Name like 'Windows%' and partialproductkey <> null" | Out-File -FilePath $CurFileName
-##-# #  | select Description, LicenseStatus
-##-# 
-##-# $CurFileName = Join-Path -Path $NodePath -ChildPath AntivirusProductInfo.txt
-##-# Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct | Out-File -FilePath $CurFileName
-##-# 
-##-# $CurFileName = Join-Path -Path $NodePath -ChildPath EsetInfo.txt
-##-# Get-ItemProperty -Path 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Info' | Out-File -FilePath $CurFileName
+if (-Not (Test-Path -PathType Container -Path $BasePath)) {
+	Write-Host "Specified base path does not exist or is not directory"
+	Exit 1
+}
+$NodePath = Join-Path -Path $BasePath -ChildPath $env:computername
+if (Test-Path -PathType Any -Path $NodePath) {
+	Write-Host "Specified base path already contains node directory"
+	Exit 2
+}
+New-Item -Path $BasePath -Name $env:computername -ItemType "directory"
+
+$CurFileName = Join-Path -Path $NodePath -ChildPath ComputerInfo.txt
+Get-ComputerInfo | Out-File -FilePath $CurFileName
+
+$CurFileName = Join-Path -Path $NodePath -ChildPath WindowsActivationInfo.txt
+# https://superuser.com/questions/1422368/how-can-i-check-if-windows-is-activated-from-the-command-prompt-or-powershell
+#Get-CimInstance SoftwareLicensingProduct -Filter "partialproductkey is not null" | ? name -like "windows*"
+Get-CimInstance SoftwareLicensingProduct -Filter "Name like 'Windows%' and partialproductkey <> null" | Out-File -FilePath $CurFileName
+#  | select Description, LicenseStatus
+
+$CurFileName = Join-Path -Path $NodePath -ChildPath AntivirusProductInfo.txt
+Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct | Out-File -FilePath $CurFileName
+
+$CurFileName = Join-Path -Path $NodePath -ChildPath EsetInfo.txt
+Get-ItemProperty -Path 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Info' | Out-File -FilePath $CurFileName
 
 #Get-ChildItem -Path 'HKLM:\SYSTEM\CurrentControlSet\Enum\USB' -Exclude 'ROOT*'
 #Where-Object LastWriteTime -gt (Get-Date).AddDays(-1) |
@@ -236,13 +244,6 @@ Write-Host $env:computername
 #       @{Name="SerialNumber"; Expression={ $_.PsChildName }},
 #       @{Name="LastModified"; Expression={ (Add-RegKeyMember $_.PsPath).LastWriteTime }}
 
-if( $Host -and $Host.UI -and $Host.UI.RawUI ) {
-$rawUI = $Host.UI.RawUI
-$oldSize = $rawUI.BufferSize
-$typeName = $oldSize.GetType( ).FullName
-$newSize = New-Object $typeName (500, $oldSize.Height)
-$rawUI.BufferSize = $newSize
-}
 #ForEach-Object { Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB" } | Get-ChildItem | 
 #$obj = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB\VID_30FA&PID_0300" | Get-RegWriteTime
 # | Select-Object Name, LastWriteTime, Property | Get-ItemProperty DeviceDesc
@@ -251,4 +252,5 @@ $rawUI.BufferSize = $newSize
 #$path = $obj.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:")
 #Get-ItemProperty -LiteralPath $path
 
-Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB" | Get-ChildItem | Get-RegWriteTime | ForEach-Object -Process { Write-Output "--- Item-Break ---"; Write-Output "Item-Path : $_"; Write-Output "Item-Name : $($_.Name)"; Write-Output "Item-LastModified : $($_.LastWriteTime)"; Get-ItemProperty -LiteralPath $_.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:") }
+$CurFileName = Join-Path -Path $NodePath -ChildPath EnumUsb.txt
+Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB" | Get-ChildItem | Get-RegWriteTime | ForEach-Object -Process { Write-Output "--- Item-Break ---"; Write-Output "Item-Path : $_"; Write-Output "Item-Name : $($_.Name)"; Write-Output "Item-LastModified : $($_.LastWriteTime)"; Get-ItemProperty -LiteralPath $_.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:") } | Out-File -FilePath $CurFileName
