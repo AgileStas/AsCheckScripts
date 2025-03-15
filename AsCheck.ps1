@@ -254,3 +254,9 @@ Get-ItemProperty -Path 'HKLM:\SOFTWARE\ESET\ESET Security\CurrentVersion\Info' |
 
 $CurFileName = Join-Path -Path $NodePath -ChildPath EnumUsb.txt
 Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Enum\USB" | Get-ChildItem | Get-RegWriteTime | ForEach-Object -Process { Write-Output "--- Item-Break ---"; Write-Output "Item-Path : $_"; Write-Output "Item-Name : $($_.Name)"; Write-Output "Item-LastModified : $($_.LastWriteTime)"; Get-ItemProperty -LiteralPath $_.Name.replace("HKEY_LOCAL_MACHINE", "HKLM:") } | Out-File -FilePath $CurFileName
+
+$CurFileName = Join-Path -Path $NodePath -ChildPath NetAdapter.txt
+Get-NetAdapter | Format-List | Out-File -FilePath $CurFileName
+
+$CurFileName = Join-Path -Path $NodePath -ChildPath PhysicalDisk.txt
+Get-PhysicalDisk | Format-List | Out-File -FilePath $CurFileName
